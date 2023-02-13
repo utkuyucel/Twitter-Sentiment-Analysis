@@ -16,25 +16,18 @@ search_terms = terms + " " + "lang:" + lang
 
 number_of_tweets = 100
 
-# Get tweets data using snscrape library
 tweets = sntwitter.TwitterSearchScraper(search_terms).get_items()
 
 # Define a function to process the text in a tweet
 def process_text(text):
-    # Remove punctuations
     text = text.translate(str.maketrans("", "", string.punctuation))
 
-    # Tokenize words
     words = word_tokenize(text)
-
-    # Remove stopwords
     words = [word for word in words if word.lower() not in stopwords.words("english")]
 
-    # Lemmatize words
     lemmatizer = WordNetLemmatizer()
     words = [lemmatizer.lemmatize(word) for word in words]
 
-    # Return processed text
     return " ".join(words)
 
 t_list = []
@@ -56,7 +49,6 @@ def get_sentiment(tweet):
 
 
 def main():
-  # Apply the sentiment analysis function to the dataframe
   df["sentiment"] = df["text"].apply(get_sentiment)
 
   # Print the sentiment analysis results
