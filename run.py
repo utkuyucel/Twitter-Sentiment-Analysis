@@ -11,6 +11,7 @@ from nltk import pos_tag, ne_chunk
 import enchant
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
 
 nltk.download('punkt')
 nltk.download('stopwords')
@@ -21,11 +22,11 @@ nltk.download('words')
 
 def search_tweets(terms, lang, number_of_tweets):
     """
-    Fetches tweets containing the specified search terms in the specified language.
+    Fetches tweets containing the specified search terms in the specified language, within a given date range.
     Returns a list of raw tweet contents.
     """
-    search_terms = terms + " lang:" + lang
-    tweets = sntwitter.TwitterSearchScraper(search_terms).get_items()
+
+    tweets = sntwitter.TwitterSearchScraper(terms).get_items()
     raw_tweets = []
     for i, tweet in tqdm(enumerate(tweets), total=number_of_tweets):
         if i >= number_of_tweets:
@@ -75,7 +76,7 @@ def get_sentiment(tweet):
     analysis = TextBlob(tweet)
     return analysis.sentiment.polarity
 
-def visualize_sentiment(df):
+def visualize_sentiment(df, title = "Sentiment"):
     """
     Generates a histogram of sentiment scores for the tweets in the dataframe.
     """
@@ -84,28 +85,37 @@ def visualize_sentiment(df):
     ax.hist(df["sentiment"], bins=20)
     ax.set_xlabel("Sentiment Score")
     ax.set_ylabel("Frequency")
+    ax.set_title(title)
     plt.show()
 
-def main():
-    terms = "Bitcoin"
-    lang = "en"
-    number_of_tweets = 50
-    
+def visualize_sentiment_over_time(df):
+    """
+    Generates a line chart of sentiment scores for the tweets in the dataframe over time.
+    """
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df["hour"] = df["timestamp"].apply(lambda x: x.hour)
+    hourly_sentiment = df.groupby("hour")["sentiment"].mean()
+    hourly_sentiment.plot(kind="line", x="hour", y="sentiment")
+    plt.xticks(range(24))
+    plt.xlabel("Hour of Day")
+    plt.ylabel("Sentiment Score")
+    plt.show()
+
     # Fetch tweets
     raw_tweets = search_tweets(terms, lang, number_of_tweets)
-    
+
     # Clean and process tweets
     processed_tweets = [process_text(tweet) for tweet in raw_tweets]
-    
+
     # Perform sentiment analysis on tweets
     sentiment_scores = [get_sentiment(tweet) for tweet in processed_tweets]
-    
-    # Store the tweets and sentiment scores in a pandas dataframe
-    df = pd.DataFrame({"text": processed_tweets, "sentiment": sentiment_scores})
-    
+
+    # Store the tweets, sentiment scores, and timestamps in a pandas dataframe
+    df = pd.DataFrame({"text": processed_tweets, "sentiment": sentiment_scores, "timestamp": pd.Timestamp.now()})
+
     # Visualize sentiment scores
-    visualize_sentiment(df)
-    
+    visualize_sentiment(df, "Sentiment")
+
     # Print out tweets with highest and lowest sentiment scores
     df_sorted = df.sort_values("sentiment")
     print("Most negative tweets:")
@@ -114,19 +124,23 @@ def main():
     print("\nMost positive tweets:")
     for tweet in df_sorted["text"].tail(5):
         print("-", tweet)
-    
+
     # Plot word cloud of most frequent words
     from wordcloud import WordCloud
     from collections import Counter
-    
+
     words = Counter(" ".join(processed_tweets).split()).most_common(100)
     wordcloud = WordCloud(width=800, height=400, background_color="white").generate_from_frequencies(dict(words))
     plt.figure(figsize=(12, 8))
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis('off')
     plt.show()
-    
+
     print(df.head())
 
+    # Visualize sentiment over time
+    visualize_sentiment_over_time(df)
+
+
 if __name__ == "__main__":
-    main()
+  main()
