@@ -11,20 +11,24 @@ from nltk import pos_tag, ne_chunk
 import enchant
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta    
+from wordcloud import WordCloud
+from collections import Counter
 
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
-nltk.download('averaged_perceptron_tagger')
-nltk.download('maxent_ne_chunker')
-nltk.download('words')
+# nltk.download('punkt')
+# nltk.download('stopwords')
+# nltk.download('wordnet')
+# nltk.download('averaged_perceptron_tagger')
+# nltk.download('maxent_ne_chunker')
+# nltk.download('words')
 
 def search_tweets(terms, lang, number_of_tweets):
     """
     Fetches tweets containing the specified search terms in the specified language, within a given date range.
     Returns a list of raw tweet contents.
     """
+
+    number_of_tweets = 500
 
     tweets = sntwitter.TwitterSearchScraper(terms).get_items()
     raw_tweets = []
@@ -125,9 +129,7 @@ def visualize_sentiment_over_time(df):
     for tweet in df_sorted["text"].tail(5):
         print("-", tweet)
 
-    # Plot word cloud of most frequent words
-    from wordcloud import WordCloud
-    from collections import Counter
+
 
     words = Counter(" ".join(processed_tweets).split()).most_common(100)
     wordcloud = WordCloud(width=800, height=400, background_color="white").generate_from_frequencies(dict(words))
