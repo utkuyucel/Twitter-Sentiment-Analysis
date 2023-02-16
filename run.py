@@ -14,22 +14,23 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta    
 from wordcloud import WordCloud
 from collections import Counter
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-# nltk.download('punkt')
-# nltk.download('stopwords')
-# nltk.download('wordnet')
-# nltk.download('averaged_perceptron_tagger')
-# nltk.download('maxent_ne_chunker')
-# nltk.download('words')
+
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('maxent_ne_chunker')
+nltk.download('words')
+nltk.download('omw-1.4')
 
 def search_tweets(terms, lang, number_of_tweets):
     """
     Fetches tweets containing the specified search terms in the specified language, within a given date range.
     Returns a list of raw tweet contents.
     """
-
-    number_of_tweets = 500
-
     tweets = sntwitter.TwitterSearchScraper(terms).get_items()
     raw_tweets = []
     for i, tweet in tqdm(enumerate(tweets), total=number_of_tweets):
@@ -80,6 +81,31 @@ def get_sentiment(tweet):
     analysis = TextBlob(tweet)
     return analysis.sentiment.polarity
 
+def get_sentiment_bert(tweet):
+    """
+    Performs sentiment analysis on the text of a tweet using a pre-trained BERT model from Hugging Face Transformers.
+    Returns the predicted sentiment as a string: "positive", "negative", or "neutral".
+    """
+    # Load tokenizer and model
+    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased-finetuned-sst-2-english")
+    model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased-finetuned-sst-2-english")
+
+    # Tokenize input text and convert to PyTorch tensors
+    inputs = tokenizer.encode_plus(tweet, return_tensors="pt", truncation=True, padding=True)
+
+    # Pass input through the model and get predicted label
+    outputs = model(**inputs)
+    predicted_label = torch.argmax(outputs.logits).item()
+
+    # Map predicted label to sentiment string
+    if predicted_label == 0:
+        return "negative"
+    elif predicted_label == 1:
+        return "positive"
+    else:
+        return "neutral"
+
+
 def visualize_sentiment(df, title = "Sentiment"):
     """
     Generates a histogram of sentiment scores for the tweets in the dataframe.
@@ -92,7 +118,7 @@ def visualize_sentiment(df, title = "Sentiment"):
     ax.set_title(title)
     plt.show()
 
-def visualize_sentiment_over_time(df):
+def visualize_sentiment_over_time(df, terms, lang, number_of_tweets ):
     """
     Generates a line chart of sentiment scores for the tweets in the dataframe over time.
     """
@@ -112,7 +138,7 @@ def visualize_sentiment_over_time(df):
     processed_tweets = [process_text(tweet) for tweet in raw_tweets]
 
     # Perform sentiment analysis on tweets
-    sentiment_scores = [get_sentiment(tweet) for tweet in processed_tweets]
+    sentiment_scores = [get_sentiment_bert(tweet) for tweet in processed_tweets]
 
     # Store the tweets, sentiment scores, and timestamps in a pandas dataframe
     df = pd.DataFrame({"text": processed_tweets, "sentiment": sentiment_scores, "timestamp": pd.Timestamp.now()})
@@ -142,6 +168,52 @@ def visualize_sentiment_over_time(df):
 
     # Visualize sentiment over time
     visualize_sentiment_over_time(df)
+
+def main():
+    # Set search terms, language, and number of tweets to fetch
+    terms = "Tesla OR #Tesla"
+    lang = "en"
+    number_of_tweets = 100
+
+    # Fetch tweets
+    raw_tweets = search_tweets(terms, lang, number_of_tweets)
+
+    # Clean and process tweets
+    processed_tweets = [process_text(tweet) for tweet in raw_tweets]
+
+    # Perform sentiment analysis on tweets
+    sentiment_scores = [get_sentiment_bert(tweet) for tweet in processed_tweets]
+
+    # Store the tweets, sentiment scores, and timestamps in a pandas dataframe
+    df = pd.DataFrame({"text": processed_tweets, "sentiment": sentiment_scores, "timestamp": pd.Timestamp.now()})
+
+    # Visualize sentiment scores
+    visualize_sentiment(df, "Sentiment")
+
+    print("\n")
+
+    # Print out tweets with highest and lowest sentiment scores
+    df_sorted = df.sort_values("sentiment")
+    print("Most negative tweets:")
+    for tweet in df_sorted["text"].head(5):
+        print("-", tweet)
+    print("\nMost positive tweets:")
+    for tweet in df_sorted["text"].tail(5):
+        print("-", tweet)
+
+
+    print("\n")
+
+    # Generate word cloud
+    words = Counter(" ".join(processed_tweets).split()).most_common(100)
+    wordcloud = WordCloud(width=800, height=400, background_color="white").generate_from_frequencies(dict(words))
+    plt.figure(figsize=(12, 8))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.show()
+
+    # Visualize sentiment over time
+    visualize_sentiment_over_time(df, terms, lang, number_of_tweets)
 
 
 if __name__ == "__main__":
