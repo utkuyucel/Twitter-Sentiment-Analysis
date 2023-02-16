@@ -118,57 +118,6 @@ def visualize_sentiment(df, title = "Sentiment"):
     ax.set_title(title)
     plt.show()
 
-def visualize_sentiment_over_time(df, terms, lang, number_of_tweets ):
-    """
-    Generates a line chart of sentiment scores for the tweets in the dataframe over time.
-    """
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df["hour"] = df["timestamp"].apply(lambda x: x.hour)
-    hourly_sentiment = df.groupby("hour")["sentiment"].mean()
-    hourly_sentiment.plot(kind="line", x="hour", y="sentiment")
-    plt.xticks(range(24))
-    plt.xlabel("Hour of Day")
-    plt.ylabel("Sentiment Score")
-    plt.show()
-
-    # Fetch tweets
-    raw_tweets = search_tweets(terms, lang, number_of_tweets)
-
-    # Clean and process tweets
-    processed_tweets = [process_text(tweet) for tweet in raw_tweets]
-
-    # Perform sentiment analysis on tweets
-    sentiment_scores = [get_sentiment_bert(tweet) for tweet in processed_tweets]
-
-    # Store the tweets, sentiment scores, and timestamps in a pandas dataframe
-    df = pd.DataFrame({"text": processed_tweets, "sentiment": sentiment_scores, "timestamp": pd.Timestamp.now()})
-
-    # Visualize sentiment scores
-    visualize_sentiment(df, "Sentiment")
-
-    # Print out tweets with highest and lowest sentiment scores
-    df_sorted = df.sort_values("sentiment")
-    print("Most negative tweets:")
-    for tweet in df_sorted["text"].head(5):
-        print("-", tweet)
-    print("\nMost positive tweets:")
-    for tweet in df_sorted["text"].tail(5):
-        print("-", tweet)
-
-
-
-    words = Counter(" ".join(processed_tweets).split()).most_common(100)
-    wordcloud = WordCloud(width=800, height=400, background_color="white").generate_from_frequencies(dict(words))
-    plt.figure(figsize=(12, 8))
-    plt.imshow(wordcloud, interpolation='bilinear')
-    plt.axis('off')
-    plt.show()
-
-    print(df.head())
-
-    # Visualize sentiment over time
-    visualize_sentiment_over_time(df)
-
 def main():
     # Set search terms, language, and number of tweets to fetch
     terms = "Tesla OR #Tesla"
@@ -212,8 +161,8 @@ def main():
     plt.axis('off')
     plt.show()
 
-    # Visualize sentiment over time
-    visualize_sentiment_over_time(df, terms, lang, number_of_tweets)
+    
+    
 
 
 if __name__ == "__main__":
