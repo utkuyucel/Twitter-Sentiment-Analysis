@@ -16,15 +16,18 @@ from wordcloud import WordCloud
 from collections import Counter
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
 
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
-nltk.download('averaged_perceptron_tagger')
-nltk.download('maxent_ne_chunker')
-nltk.download('words')
-nltk.download('omw-1.4')
+
+#nltk.download('punkt')
+#nltk.download('stopwords')
+#nltk.download('wordnet')
+#nltk.download('averaged_perceptron_tagger')
+#nltk.download('maxent_ne_chunker')
+#nltk.download('words')
+#nltk.download('omw-1.4')
+#nltk.download('vader_lexicon')
 
 def search_tweets(terms, lang, number_of_tweets):
     """
@@ -56,15 +59,17 @@ def process_text(text):
     words = word_tokenize(text)
     pos_tags = pos_tag(words)
     
+    print("Identifying name entities...\n")
     # Identify named entities and remove them from text
     named_entities = ne_chunk(pos_tags, binary=True)
-    named_entities = ["/".join(word for word, tag in elt) for elt in named_entities if isinstance(elt, nltk.tree.Tree)]
+    named_entities = ["/".join(word for word, tag in elt) for elt in tqdm(named_entities) if isinstance(elt, nltk.tree.Tree)]
     for named_entity in named_entities:
         text = text.replace(named_entity, "")
     
+    print("Correting spelling errors...\n")
     # Correct spelling errors
     spell_checker = enchant.Dict("en_US")
-    words = [word if spell_checker.check(word) else (spell_checker.suggest(word)[0] if spell_checker.suggest(word) else word) for word in words]
+    words = [word if spell_checker.check(word) else (spell_checker.suggest(word)[0] if spell_checker.suggest(word) else word) for word in tqdm(words)]
     
     # Remove stop words and lemmatize words
     words = [word for word in words if word.lower() not in stopwords.words("english")]
@@ -105,6 +110,15 @@ def get_sentiment_bert(tweet):
     else:
         return "neutral"
 
+def get_sentiment_vader(tweet):
+    """
+    Performs sentiment analysis on the text of a tweet using VADER (Valence Aware Dictionary and sEntiment Reasoner).
+    Returns the compound score, which ranges from -1 (most negative) to 1 (most positive).
+    """
+    sid = SentimentIntensityAnalyzer()
+    scores = sid.polarity_scores(tweet)
+    return scores["compound"]
+
 
 def visualize_sentiment(df, title = "Sentiment"):
     """
@@ -120,22 +134,25 @@ def visualize_sentiment(df, title = "Sentiment"):
 
 def main():
     # Set search terms, language, and number of tweets to fetch
-    terms = "Tesla OR #Tesla"
+    terms = "Bitcoin OR #BTC OR $BTC"
     lang = "en"
-    number_of_tweets = 100
+    number_of_tweets = 300
 
     # Fetch tweets
     raw_tweets = search_tweets(terms, lang, number_of_tweets)
 
+    print("Cleaning and processing...\n")
     # Clean and process tweets
-    processed_tweets = [process_text(tweet) for tweet in raw_tweets]
+    processed_tweets = [process_text(tweet) for tweet in tqdm(raw_tweets)]
 
+    print("Performing analysis...\n")
     # Perform sentiment analysis on tweets
-    sentiment_scores = [get_sentiment_bert(tweet) for tweet in processed_tweets]
+    sentiment_scores = [get_sentiment_vader(tweet) for tweet in tqdm(processed_tweets)]
 
     # Store the tweets, sentiment scores, and timestamps in a pandas dataframe
     df = pd.DataFrame({"text": processed_tweets, "sentiment": sentiment_scores, "timestamp": pd.Timestamp.now()})
 
+    print("Visualizing...\n")
     # Visualize sentiment scores
     visualize_sentiment(df, "Sentiment")
 
