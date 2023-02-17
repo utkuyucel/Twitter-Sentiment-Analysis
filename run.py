@@ -62,14 +62,14 @@ def process_text(text):
     print("Identifying name entities...\n")
     # Identify named entities and remove them from text
     named_entities = ne_chunk(pos_tags, binary=True)
-    named_entities = ["/".join(word for word, tag in elt) for elt in tqdm(named_entities) if isinstance(elt, nltk.tree.Tree)]
-    for named_entity in named_entities:
+    named_entities = ["/".join(word for word, tag in elt) for elt in named_entities if isinstance(elt, nltk.tree.Tree)]
+    for named_entity in tqdm(named_entities):
         text = text.replace(named_entity, "")
     
-    print("Correting spelling errors...\n")
+    #print("Correting spelling errors...\n")
     # Correct spelling errors
-    spell_checker = enchant.Dict("en_US")
-    words = [word if spell_checker.check(word) else (spell_checker.suggest(word)[0] if spell_checker.suggest(word) else word) for word in tqdm(words)]
+    #spell_checker = enchant.Dict("en_US")
+    #words = [word if spell_checker.check(word) else (spell_checker.suggest(word)[0] if spell_checker.suggest(word) else word) for word in tqdm(words)]
     
     # Remove stop words and lemmatize words
     words = [word for word in words if word.lower() not in stopwords.words("english")]
@@ -136,7 +136,7 @@ def main():
     # Set search terms, language, and number of tweets to fetch
     terms = "Bitcoin OR #BTC OR $BTC"
     lang = "en"
-    number_of_tweets = 300
+    number_of_tweets = 3000
 
     # Fetch tweets
     raw_tweets = search_tweets(terms, lang, number_of_tweets)
